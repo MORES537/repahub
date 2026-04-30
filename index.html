@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RepaHub</title>
+<link rel="icon" type="image/png" href="assets/logo/repahub-logo.png">
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <div class="logo" onclick="nav('home')">
+    <img src="assets/logo/repahub-logo.png"
+         onerror="this.style.display='none'"
+         id="navLogo"
+         style="display:none"
+         alt="RepaHub">
+    <img src="assets/logo/repahub-logo.png" id="logoReal" style="display:none" alt="RepaHub Logo">
+    <!-- Fallback circle -->
+    <div id="logoFallback" style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#0d8fd8,#00e676);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.8rem;color:#000;border:2px solid var(--cyan);flex-shrink:0">RH</div>
+    <div class="logo-text">RepaHub</div>
+  </div>
+  <div class="nav-links">
+    <a class="active" onclick="nav('home')">Home</a>
+    <a onclick="nav('music')">Music</a>
+    <a onclick="nav('nfts')">NFTs</a>
+    <a onclick="nav('buy')">Buy $RC</a>
+    <a onclick="nav('hub')">Cultural Hub</a>
+  </div>
+  <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">Connect Wallet</button>
+</nav>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <div class="hero">
+    <div class="hero-badge">&#x1F1E8;&#x1F1FA; Cuban Reparto Culture on the Blockchain</div>
+    <h1>The Digital Home of<br><em>Reparto Cubano</em></h1>
+    <p>Support original artists, collect unique digital art, and be part of the most authentic Cuban music community in Web3.</p>
+    <div class="hero-btns">
+      <button class="btn-primary" onclick="nav('music')">Explore Music</button>
+      <button class="btn-outline" onclick="nav('nfts')">View NFTs</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num">3</div><div class="stat-label">Original Tracks</div></div>
+    <div class="stat"><div class="stat-num">10,000</div><div class="stat-label">NFTs Collection</div></div>
+    <div class="stat"><div class="stat-num">20,000</div><div class="stat-label">$RC per Track</div></div>
+    <div class="stat"><div class="stat-num">2,000 RC</div><div class="stat-label">= 1 HBAR</div></div>
+  </div>
+
+  <div style="margin-top:2rem">
+    <div class="sec-head"><h2>Featured Tracks</h2><p>Preview 30 seconds — unlock the full track with $RC</p></div>
+    <div class="grid" id="featuredGrid"></div>
+  </div>
+</div>
+
+<!-- MUSIC -->
+<div class="page" id="page-music">
+  <div class="sec-head"><h2>Music</h2><p>Original tracks by independent Cuban artists — unlock with $RC</p></div>
+  <div class="upload-box" onclick="openUpload()">
+    <div style="font-size:1.8rem;margin-bottom:0.5rem">🎵</div>
+    <h3>Are you an artist?</h3>
+    <p>Upload your original music and earn $RC every time someone unlocks your track</p>
+    <div style="margin-top:0.8rem"><span class="btn-sm green">Upload Track</span></div>
+  </div>
+  <div id="musicList"></div>
+</div>
+
+<!-- NFTs -->
+<div class="page" id="page-nfts">
+  <div class="sec-head"><h2>NFT Collection</h2><p>10,000 unique pieces of Cuban Reparto culture — fixed prices by rarity</p></div>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.2rem">
+    <span class="rarity-badge legendary" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('all')">All</span>
+    <span class="rarity-badge legendary" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('legendary')">Legendary</span>
+    <span class="rarity-badge epic" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('epic')">Epic</span>
+    <span class="rarity-badge rare" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('rare')">Rare</span>
+    <span class="rarity-badge common" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('common')">Common</span>
+  </div>
+  <div class="grid" id="nftGrid"></div>
+</div>
+
+<!-- BUY RC -->
+<div class="page" id="page-buy">
+  <div class="sec-head"><h2>Buy RepaCoin ($RC)</h2><p>The official currency of the RepaHub ecosystem</p></div>
+  <div class="buy-wrap">
+    <div class="buy-box">
+      <h3>Purchase $RC</h3>
+      <div class="sub">Pay with HBAR, receive $RC instantly</div>
+      <div class="inp-group"><label>HBAR Amount</label><input type="number" id="hbarIn" placeholder="e.g. 5" oninput="calcRC()" min="0.001" step="0.001"></div>
+      <div class="convert-row">You will receive <span id="rcOut">— $RC</span></div>
+      <div class="inp-group"><label>Or enter $RC amount</label><input type="number" id="rcIn" placeholder="e.g. 20000" oninput="calcHBAR()" min="1"></div>
+      <div class="convert-row">Cost in HBAR <span id="hbarOut">— HBAR</span></div>
+      <button class="btn-primary" style="width:100%;margin-top:0.5rem" onclick="buyRC()">Buy $RC Now</button>
+      <div class="rate-table" style="margin-top:0.9rem">
+        <h4 style="display:flex;justify-content:space-between;align-items:center">
+          <span>On-chain status</span>
+          <button class="btn-sm" type="button" onclick="refreshOnChainStatus()">Refresh</button>
+        </h4>
+        <div class="rate-row"><span>Current token price</span><b id="onChainPrice">Loading...</b></div>
+        <div class="rate-row"><span>Tokens available</span><b id="onChainSupply">Loading...</b></div>
+      </div>
+      <div class="contract-links">
+        Token: <a href="https://hashscan.io/mainnet/token/0.0.10430441" target="_blank">0.0.10430441</a><br>
+        Contract: <a href="https://hashscan.io/mainnet/contract/0xcc66E4bD19C616a72DE06B5B71aC2a226D51B9cD" target="_blank">0xcc66E4...B9cD</a><br>
+        Network: Hedera Mainnet
+      </div>
+    </div>
+    <div class="buy-box">
+      <h3>Price Reference</h3>
+      <div class="sub">Fixed price — always the same rate</div>
+      <div class="rate-table">
+        <h4>Conversion Table</h4>
+        <div class="rate-row"><span>1 RC</span><b>0.0005 HBAR</b></div>
+        <div class="rate-row"><span>1,000 RC</span><b>0.5 HBAR</b></div>
+        <div class="rate-row"><span>2,000 RC</span><b>1 HBAR</b></div>
+        <div class="rate-row"><span>10,000 RC</span><b>5 HBAR</b></div>
+        <div class="rate-row"><span>20,000 RC</span><b>10 HBAR</b></div>
+        <div class="rate-row"><span>100,000 RC</span><b>50 HBAR</b></div>
+      </div>
+      <div style="margin-top:1rem;background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.2);border-radius:8px;padding:0.8rem;font-size:0.78rem;color:var(--green);line-height:1.6">
+        $RC is used to unlock music, buy NFTs, tip artists, and vote in the RepaHub community.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CULTURAL HUB -->
+<div class="page" id="page-hub">
+  <div class="sec-head"><h2>Cultural Hub</h2><p>History, culture and community of Cuban Reparto music</p></div>
+  <div class="hub-card"><h3>What is Reparto?</h3><p>Reparto is an urban music genre born in Cuba in the late 1990s, fusing reggaeton with Cuban timba, rap, and electronic music. It originated in the popular neighborhoods of Havana and is characterized by direct lyrics, accelerated rhythms, and an overwhelming energy that connects with everyday Cuban reality.</p><div style="margin-top:0.8rem"><span class="tag">Cuba</span><span class="tag">Cuban Reggaeton</span><span class="tag">Timba</span><span class="tag">Cuban Trap</span><span class="tag">Urban</span></div></div>
+  <div class="hub-card"><h3>History of the Genre</h3><p>Emerging in the late 90s in East Havana — especially in Alamar, Regla, and Guanabacoa — Reparto developed a unique Cuban identity distinct from Puerto Rican reggaeton. It incorporates elements of rumba and street culture. Through the 2000s, artists brought it to national and international audiences.</p></div>
+  <div class="hub-card"><h3>RepaCoin ($RC) in the Ecosystem</h3><p>$RC is the native token of RepaHub. Use it to unlock music from independent artists, purchase NFTs from the 10,000-piece collection, tip your favorite creators, and participate in community governance votes.</p><div style="margin-top:1rem"><button class="btn-outline" onclick="nav('buy')">Get $RC Tokens</button></div></div>
+  <div class="hub-card"><h3>Community Governance</h3><p>$RC holders can propose and vote on key decisions: which artists get featured, new platform features, community events, and more. The more $RC you hold, the more weight your vote carries.</p><div style="margin-top:1rem"><a class="btn-outline" href="https://example.com/repahub-community" target="_blank" rel="noopener noreferrer">Join Community</a></div></div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal-bg" id="uploadModal">
+  <div class="modal">
+    <h2>Upload Your Track</h2>
+    <div class="sub">Share your original music with the RepaHub community</div>
+    <div class="disclaimer">⚠️ <strong>Legal Declaration:</strong> By uploading, you confirm that this is your original work and that you hold all rights to distribute it on RepaHub. You are solely responsible for the content you upload.</div>
+    <div class="inp-group"><label>Track Title</label><input type="text" id="trackTitle" placeholder="My original track"></div>
+    <div class="inp-group"><label>Price to unlock (in $RC)</label><input type="number" id="trackPrice" placeholder="e.g. 20000" min="1"></div>
+    <div class="inp-group"><label>Genre</label><input type="text" id="trackGenre" placeholder="e.g. Reparto / Electronic"></div>
+    <div style="background:var(--dark4);border:1px dashed #1e3a5a;border-radius:8px;padding:1.2rem;text-align:center;margin-bottom:1rem;cursor:pointer">
+      <div style="font-size:1.5rem;margin-bottom:0.3rem">📁</div>
+      <div style="font-size:0.8rem;color:var(--text2)">Click to select audio file (MP3, WAV, FLAC)</div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeUpload()">Cancel</button>
+      <button class="btn-primary" onclick="submitTrack()">Sign & Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAYER -->
+<div class="player" id="player">
+  <img id="pCover" src="" alt="cover">
+  <button class="play-icon" id="playBtn" onclick="togglePlay()">▶</button>
+  <div class="player-info">
+    <div class="player-title" id="pTitle">—</div>
+    <div class="player-artist" id="pArtist">—</div>
+  </div>
+  <div id="previewLabel" class="preview-label" style="display:none">⏱ PREVIEW</div>
+  <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+  <button class="player-close" onclick="closePlayer()">✕</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

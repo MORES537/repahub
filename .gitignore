@@ -1,0 +1,6 @@
+.env
+js/secrets.js
+node_modules/
+dist/
+.DS_Store
+*.log
