@@ -20,6 +20,10 @@ var audio = null;
 var playing = false;
 var previewTimer = null;
 var tracks = [...TRACKS];
+globalThis.audio = audio;
+globalThis.playing = playing;
+globalThis.previewTimer = previewTimer;
+globalThis.tracks = tracks;
 
 // Load real logo
 const LOGO_URL = "assets/logo/repahub-logo.png";

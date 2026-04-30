@@ -1,12 +1,13 @@
 function previewTrack(id){
-  const t = tracks.find(x => x.id === id);
+  const tracksList = globalThis.tracks || [];
+  const t = tracksList.find(x => x.id === id);
   if(!t)return;
   // reset all preview buttons
   document.querySelectorAll('.preview-btn').forEach(b => {b.textContent = '▶ 30s Preview';b.classList.remove('playing');});
-  if(audio){audio.pause();audio = null;clearTimeout(previewTimer);}
-  audio = new Audio(t.url);
-  audio.play().catch(() => toast('Error loading preview','error'));
-  playing = true;
+  if(globalThis.audio){globalThis.audio.pause();globalThis.audio = null;clearTimeout(globalThis.previewTimer);}
+  globalThis.audio = new Audio(t.url);
+  globalThis.audio.play().catch(() => toast('Error loading preview','error'));
+  globalThis.playing = true;
   document.getElementById('pCover').src = t.cover;
   document.getElementById('pTitle').textContent = t.title + ' — PREVIEW';
   document.getElementById('pArtist').textContent = t.artist;
@@ -15,13 +16,13 @@ function previewTrack(id){
   document.getElementById('player').classList.add('active');
   const btn = document.getElementById('prev-' + id);
   if(btn){btn.textContent = '⏸ Playing...';btn.classList.add('playing');}
-  audio.ontimeupdate = () => {
-    if(audio.duration){document.getElementById('progFill').style.width = (audio.currentTime / audio.duration * 100) + '%';}
+  globalThis.audio.ontimeupdate = () => {
+    if(globalThis.audio.duration){document.getElementById('progFill').style.width = (globalThis.audio.currentTime / globalThis.audio.duration * 100) + '%';}
   };
   // Stop after 30 seconds
-  previewTimer = setTimeout(() => {
-    if(audio){audio.pause();audio = null;}
-    playing = false;
+  globalThis.previewTimer = setTimeout(() => {
+    if(globalThis.audio){globalThis.audio.pause();globalThis.audio = null;}
+    globalThis.playing = false;
     document.getElementById('playBtn').textContent = '▶';
     document.getElementById('previewLabel').style.display = 'none';
     document.querySelectorAll('.preview-btn').forEach(b => {b.textContent = '▶ 30s Preview';b.classList.remove('playing');});
@@ -30,27 +31,27 @@ function previewTrack(id){
 }
 
 function playTrack(id){
-  const t = tracks.find(x => x.id === id);
+  const t = (globalThis.tracks || []).find(x => x.id === id);
   if(!t)return;
   if(!t.unlocked){unlockTrack(id);return;}
-  clearTimeout(previewTimer);
-  if(audio){audio.pause();audio = null;}
-  audio = new Audio(t.url);
-  audio.play().catch(() => toast('Error loading audio','error'));
-  playing = true;
+  clearTimeout(globalThis.previewTimer);
+  if(globalThis.audio){globalThis.audio.pause();globalThis.audio = null;}
+  globalThis.audio = new Audio(t.url);
+  globalThis.audio.play().catch(() => toast('Error loading audio','error'));
+  globalThis.playing = true;
   document.getElementById('pCover').src = t.cover;
   document.getElementById('pTitle').textContent = t.title;
   document.getElementById('pArtist').textContent = t.artist;
   document.getElementById('previewLabel').style.display = 'none';
   document.getElementById('playBtn').textContent = '⏸';
   document.getElementById('player').classList.add('active');
-  audio.ontimeupdate = () => {if(audio.duration)document.getElementById('progFill').style.width = (audio.currentTime / audio.duration * 100) + '%';};
-  audio.onended = () => {playing = false;document.getElementById('playBtn').textContent = '▶';};
+  globalThis.audio.ontimeupdate = () => {if(globalThis.audio.duration)document.getElementById('progFill').style.width = (globalThis.audio.currentTime / globalThis.audio.duration * 100) + '%';};
+  globalThis.audio.onended = () => {globalThis.playing = false;document.getElementById('playBtn').textContent = '▶';};
 }
 
 async function unlockTrack(id){
   if(!globalThis.wallet){toast('Connect your wallet first','error');return;}
-  const t = tracks.find(x => x.id === id);
+  const t = (globalThis.tracks || []).find(x => x.id === id);
   try{
     toast("Sending " + t.price + " RC to unlock...", "");
     await window.hederaPayWithRC(t.price, "Unlock track: " + t.title);
@@ -76,15 +77,15 @@ async function unlockTrack(id){
 }
 
 function togglePlay(){
-  if(!audio)return;
-  if(playing){audio.pause();playing = false;document.getElementById('playBtn').textContent = '▶';}
-  else{audio.play();playing = true;document.getElementById('playBtn').textContent = '⏸';}
+  if(!globalThis.audio)return;
+  if(globalThis.playing){globalThis.audio.pause();globalThis.playing = false;document.getElementById('playBtn').textContent = '▶';}
+  else{globalThis.audio.play();globalThis.playing = true;document.getElementById('playBtn').textContent = '⏸';}
 }
 
 function closePlayer(){
-  if(audio){audio.pause();audio = null;}clearTimeout(previewTimer);
+  if(globalThis.audio){globalThis.audio.pause();globalThis.audio = null;}clearTimeout(globalThis.previewTimer);
   document.getElementById('player').classList.remove('active');
-  playing = false;document.getElementById('progFill').style.width = '0%';
+  globalThis.playing = false;document.getElementById('progFill').style.width = '0%';
   document.querySelectorAll('.preview-btn').forEach(b => {b.textContent = '▶ 30s Preview';b.classList.remove('playing');});
 }
 
