@@ -351,6 +351,31 @@ async function buyNFT(name, price) {
   }
 }
 
+async function buyTrackNft(trackId) {
+  console.log("[BuyNFT] Starting purchase for trackId:", trackId);
+  console.log("[BuyNFT] Wallet:", globalThis.wallet);
+  console.log("[BuyNFT] hashconnect:", window.hashconnect);
+  if (!globalThis.wallet) {
+    toast("Connect your wallet first", "error");
+    return;
+  }
+  try {
+    toast("Step 1/2: Approving RC allowance...", "info");
+    await musicNftBuyTrack(trackId);
+    toast("NFT purchased successfully! 🎉", "success");
+    // Refresh track list to update ownership
+    await loadTracksFromChain();
+  } catch (e) {
+    console.error("buyTrackNft error:", e);
+    const msg = e?.message || "Unknown error";
+    if (msg.includes("reject") || msg.includes("cancel")) {
+      toast("Transaction cancelled", "error");
+    } else {
+      toast(`Purchase failed: ${msg}`, "error");
+    }
+  }
+}
+
 function openUpload(){if(!globalThis.wallet){toast('Connect your wallet to upload music','error');return;}document.getElementById('uploadModal').classList.add('open');}
 function closeUpload(){document.getElementById('uploadModal').classList.remove('open');}
 function submitTrack(){
@@ -430,6 +455,7 @@ window.calcRC = calcRC;
 window.calcHBAR = calcHBAR;
 window.buyRC = buyRC;
 window.buyNFT = buyNFT;
+window.buyTrackNft = buyTrackNft;
 window.openUpload = openUpload;
 window.closeUpload = closeUpload;
 window.submitTrack = submitTrack;

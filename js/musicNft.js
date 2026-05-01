@@ -197,26 +197,34 @@ async function buyTrackNFT(trackId) {
   const priceRaw = BigInt(track.priceRCRaw);
 
   const ownerAccount = AccountId.fromString(globalThis.wallet);
-  const nftContract = ContractId.fromString(APP_CONFIG.musicNftContractId);
+  const nftContractId = ContractId.fromString(APP_CONFIG.musicNftContractId);
   const tokenId = TokenId.fromString(APP_CONFIG.rcTokenId);
+  const signer = window.hashconnect.getSigner(ownerAccount);
 
-  const allowanceTx = new AccountAllowanceApproveTransaction().approveTokenAllowance(
-    tokenId,
-    ownerAccount,
-    nftContract,
-    priceRaw
-  );
+  // STEP 1: Approve RC allowance
+  console.log("[musicNft] Step 1: building allowance tx...");
+  const allowanceTx = await new AccountAllowanceApproveTransaction()
+    .approveTokenAllowance(tokenId, ownerAccount, nftContractId, priceRaw)
+    .freezeWithSigner(signer);
 
-  await window.hashconnect.sendTransaction(ownerAccount, allowanceTx);
+  console.log("[musicNft] Step 1: executing allowance tx...");
+  await allowanceTx.executeWithSigner(signer);
+  console.log("[musicNft] Step 1 DONE.");
 
-  const params = new ContractFunctionParameters().addUint256(BigInt(trackId));
+  // STEP 2: Execute buyTrack
+  console.log("[musicNft] Step 2: building buyTrack tx...");
+  const params = new ContractFunctionParameters().addUint256(String(trackId));
 
-  const executeTx = new ContractExecuteTransaction()
-    .setContractId(nftContract)
+  const executeTx = await new ContractExecuteTransaction()
+    .setContractId(nftContractId)
     .setGas(DEFAULT_MUSIC_NFT_GAS)
-    .setFunction("buyTrack", params);
+    .setFunction("buyTrack", params)
+    .freezeWithSigner(signer);
 
-  return window.hashconnect.sendTransaction(ownerAccount, executeTx);
+  console.log("[musicNft] Step 2: executing buyTrack tx...");
+  const result = await executeTx.executeWithSigner(signer);
+  console.log("[musicNft] Step 2 DONE:", result);
+  return result;
 }
 
 globalThis.musicNftGetMirrorResults = fetchMirrorContractResults;
