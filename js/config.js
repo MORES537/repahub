@@ -13,7 +13,10 @@ const APP_CONFIG = {
   topUpMinHbar: parseFloat(import.meta.env.VITE_TOPUP_MIN_HBAR) || 0.01,
   topUpMaxHbar: parseFloat(import.meta.env.VITE_TOPUP_MAX_HBAR) || 25,
   mirrorNodeUrl: "https://mainnet-public.mirrornode.hedera.com",
-  reownProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID
+  reownProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
+  musicNftContractEvm: import.meta.env.VITE_MUSIC_NFT_CONTRACT_EVM,
+  musicNftContractId: import.meta.env.VITE_MUSIC_NFT_CONTRACT_ID,
+  pinataGateway: import.meta.env.VITE_PINATA_GATEWAY
 };
 
 export { APP_CONFIG };

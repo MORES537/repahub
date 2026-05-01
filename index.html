@@ -44,7 +44,7 @@
     </div>
   </div>
   <div class="stats">
-    <div class="stat"><div class="stat-num">3</div><div class="stat-label">Original Tracks</div></div>
+    <div class="stat"><div class="stat-num" id="statTracks">0</div><div class="stat-label">Original Tracks</div></div>
     <div class="stat"><div class="stat-num">10,000</div><div class="stat-label">NFTs Collection</div></div>
     <div class="stat"><div class="stat-num">20,000</div><div class="stat-label">$RC per Track</div></div>
     <div class="stat"><div class="stat-num">2,000 RC</div><div class="stat-label">= 1 HBAR</div></div>
@@ -53,6 +53,10 @@
   <div style="margin-top:2rem">
     <div class="sec-head"><h2>Featured Tracks</h2><p>Preview 30 seconds — unlock the full track with $RC</p></div>
     <div class="grid" id="featuredGrid"></div>
+  </div>
+  <div id="myCollectionSection" style="margin-top:2rem;display:none">
+    <div class="sec-head"><h2>My Collection</h2><p>Tracks you own as NFTs</p></div>
+    <div class="grid" id="myCollectionGrid"></div>
   </div>
 </div>
 
@@ -70,13 +74,10 @@
 
 <!-- NFTs -->
 <div class="page" id="page-nfts">
-  <div class="sec-head"><h2>NFT Collection</h2><p>10,000 unique pieces of Cuban Reparto culture — fixed prices by rarity</p></div>
+  <div class="sec-head"><h2>NFT Collection</h2><p>RepaHub Music NFTs — 1 of 1 collectibles</p></div>
   <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.2rem">
     <span class="rarity-badge legendary" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('all')">All</span>
     <span class="rarity-badge legendary" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('legendary')">Legendary</span>
-    <span class="rarity-badge epic" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('epic')">Epic</span>
-    <span class="rarity-badge rare" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('rare')">Rare</span>
-    <span class="rarity-badge common" style="position:static;border-radius:12px;font-size:0.72rem;cursor:pointer;padding:4px 12px" onclick="buildNFTs('common')">Common</span>
   </div>
   <div class="grid" id="nftGrid"></div>
 </div>

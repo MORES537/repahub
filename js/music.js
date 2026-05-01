@@ -5,7 +5,7 @@ function previewTrack(id){
   // reset all preview buttons
   document.querySelectorAll('.preview-btn').forEach(b => {b.textContent = '▶ 30s Preview';b.classList.remove('playing');});
   if(globalThis.audio){globalThis.audio.pause();globalThis.audio = null;clearTimeout(globalThis.previewTimer);}
-  globalThis.audio = new Audio(t.url);
+  globalThis.audio = new Audio(t.audio);
   globalThis.audio.play().catch(() => toast('Error loading preview','error'));
   globalThis.playing = true;
   document.getElementById('pCover').src = t.cover;
@@ -26,17 +26,17 @@ function previewTrack(id){
     document.getElementById('playBtn').textContent = '▶';
     document.getElementById('previewLabel').style.display = 'none';
     document.querySelectorAll('.preview-btn').forEach(b => {b.textContent = '▶ 30s Preview';b.classList.remove('playing');});
-    toast(`Want the full track? Unlock "${t.title}" for ${t.price.toLocaleString()} $RC`,'');
+    toast(`Want the full track? Buy "${t.title}" NFT for ${Math.round(t.price).toLocaleString()} $RC`,'');
   },30000);
 }
 
 function playTrack(id){
   const t = (globalThis.tracks || []).find(x => x.id === id);
   if(!t)return;
-  if(!t.unlocked){unlockTrack(id);return;}
+  if(!t.owned){toast('Buy this NFT to unlock full playback','error');return;}
   clearTimeout(globalThis.previewTimer);
   if(globalThis.audio){globalThis.audio.pause();globalThis.audio = null;}
-  globalThis.audio = new Audio(t.url);
+  globalThis.audio = new Audio(t.audio);
   globalThis.audio.play().catch(() => toast('Error loading audio','error'));
   globalThis.playing = true;
   document.getElementById('pCover').src = t.cover;
@@ -49,18 +49,21 @@ function playTrack(id){
   globalThis.audio.onended = () => {globalThis.playing = false;document.getElementById('playBtn').textContent = '▶';};
 }
 
-async function unlockTrack(id){
+async function buyTrackNft(id){
   if(!globalThis.wallet){toast('Connect your wallet first','error');return;}
   const t = (globalThis.tracks || []).find(x => x.id === id);
   try{
-    toast("Sending " + t.price + " RC to unlock...", "");
-    await window.hederaPayWithRC(t.price, "Unlock track: " + t.title);
+    toast("Approving RC and buying NFT...", "");
+    await window.musicNftBuyTrack(id);
     t.unlocked = true;
-    buildMusic();
-    toast(t.title + " unlocked!", "success");
+    t.owned = true;
+    if (globalThis.buildMusic) globalThis.buildMusic();
+    if (globalThis.buildNFTs) globalThis.buildNFTs();
+    if (globalThis.buildMyCollection) globalThis.buildMyCollection();
+    toast(t.title + " purchased!", "success");
     playTrack(id);
   } catch(e) {
-    console.log("Unlock error:", e);
+    console.log("Buy NFT error:", e);
     const classify = globalThis.classifyTxError;
     const category = typeof classify === "function" ? classify(e) : "failure";
     if(category === "rejected"){
@@ -74,6 +77,36 @@ async function unlockTrack(id){
     const details = (e && (e.shortMessage || e.message)) || "Unknown error";
     toast(`Transaction failed: ${details}. Verify in HashPack/HashScan.`, "error");
   }
+}
+
+function buildMusic(){
+  const list = globalThis.tracks || [];
+  const el = document.getElementById('musicList');
+  if(!el)return;
+  if(globalThis.tracksLoading){
+    el.innerHTML = `<div class="loading-panel"><div class="spinner"></div><div>Loading tracks from blockchain...</div></div>`;
+    return;
+  }
+  if(globalThis.tracksLoadError){
+    el.innerHTML = `<div class="loading-panel error">Failed to load tracks. Please refresh.</div>`;
+    return;
+  }
+  el.innerHTML = list.map((t,i) => `
+    <div class="music-item">
+      <div class="music-num">${i + 1}</div>
+      <img class="music-cover" src="${t.cover}" alt="${t.title}" onerror="this.style.background='var(--dark4)'">
+      <div class="music-info">
+        <div class="music-title">${t.title}</div>
+        <div class="music-artist">${t.artist} · ${t.genre}</div>
+      </div>
+      <div class="music-right">
+        <button class="preview-btn" id="prev-${t.id}" onclick="previewTrack(${t.id})">▶ 30s Preview</button>
+        ${t.owned
+          ? `<div class="music-own-actions"><div class="unlocked-badge">✓ Owned</div><button class="btn-sm green" onclick="playTrack(${t.id})">▶ Play</button><a class="btn-sm" href="${t.audio}" target="_blank" rel="noopener noreferrer" download>⬇ Download</a></div>`
+          : `<div class="music-buy-actions"><div class="music-price">${Math.round(t.price).toLocaleString()} $RC</div><button class="btn-sm" onclick="buyTrackNft(${t.id})">Buy NFT</button></div>`
+        }
+      </div>
+    </div>`).join('');
 }
 
 function togglePlay(){
@@ -91,6 +124,9 @@ function closePlayer(){
 
 window.previewTrack = previewTrack;
 window.playTrack = playTrack;
-window.unlockTrack = unlockTrack;
+window.buyTrackNft = buyTrackNft;
 window.togglePlay = togglePlay;
 window.closePlayer = closePlayer;
+window.buildMusic = buildMusic;
+globalThis.buildMusic = buildMusic;
+buildMusic();

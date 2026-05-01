@@ -85,6 +85,11 @@ async function initHashConnect() {
     document.getElementById("walletBtn").classList.add("connected");
     updateWalletMenu(accountId);
     toast("Wallet connected: " + accountId, "success");
+    if(typeof globalThis.checkOwnedTracks === "function"){
+      globalThis.checkOwnedTracks().catch((err) => {
+        console.log("Ownership sync failed:", err && (err.message || err));
+      });
+    }
   });
 
   hashconnect.disconnectionEvent.on(() => {
@@ -94,6 +99,9 @@ async function initHashConnect() {
     document.getElementById("walletBtn").classList.remove("connected");
     updateWalletMenu(null);
     closeWalletMenu();
+    if(typeof globalThis.buildMyCollection === "function"){
+      globalThis.buildMyCollection();
+    }
   });
 
   await hashconnect.init();

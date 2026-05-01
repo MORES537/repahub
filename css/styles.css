@@ -54,6 +54,10 @@ nav{background:rgba(6,13,24,0.97);border-bottom:1px solid #0d3b6e;padding:0 1.5r
 .sec-head p{color:var(--text2);font-size:0.85rem}
 
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem}
+.loading-panel{background:var(--dark3);border:1px solid #0d3b6e;border-radius:var(--r);padding:1rem;display:flex;align-items:center;gap:0.6rem;color:var(--text2)}
+.loading-panel.error{border-color:#f44336;color:#f44336}
+.spinner{width:16px;height:16px;border:2px solid #1e3a5a;border-top-color:var(--cyan);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* FEATURED TRACK CARD */
 .feat-card{background:var(--dark3);border:1px solid #0d3b6e;border-radius:var(--r);overflow:hidden;transition:all 0.2s;cursor:pointer}
@@ -79,6 +83,7 @@ nav{background:rgba(6,13,24,0.97);border-bottom:1px solid #0d3b6e;padding:0 1.5r
 .music-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
 .music-price{color:var(--cyan);font-weight:700;font-size:0.82rem}
 .unlocked-badge{color:var(--green);font-size:0.7rem;font-weight:600}
+.music-buy-actions,.music-own-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .btn-sm{background:linear-gradient(135deg,#00b4d8,#0d3b6e);color:#fff;border:none;padding:0.3rem 0.75rem;border-radius:15px;font-weight:700;font-size:0.75rem;cursor:pointer;transition:opacity 0.2s;white-space:nowrap}
 .btn-sm:hover{opacity:0.8}
 .btn-sm.green{background:linear-gradient(135deg,#00bfa5,#00e676);color:#000}
@@ -95,6 +100,8 @@ nav{background:rgba(6,13,24,0.97);border-bottom:1px solid #0d3b6e;padding:0 1.5r
 .nft-card.epic{border-color:#c653dd}
 .nft-card.rare{border-color:#00b4d8}
 .nft-img{height:190px;display:flex;align-items:center;justify-content:center;font-size:4rem;position:relative}
+.nft-cover-wrap{padding:0}
+.nft-cover{width:100%;height:100%;object-fit:cover;display:block}
 .rarity-badge{position:absolute;top:10px;right:10px;font-size:0.68rem;font-weight:800;padding:3px 9px;border-radius:12px;text-transform:uppercase;letter-spacing:0.5px}
 .rarity-badge.legendary{background:#ffd600;color:#000}
 .rarity-badge.epic{background:#c653dd;color:#fff}
@@ -103,6 +110,8 @@ nav{background:rgba(6,13,24,0.97);border-bottom:1px solid #0d3b6e;padding:0 1.5r
 .nft-info{padding:1rem}
 .nft-name{font-weight:700;font-size:0.9rem;margin-bottom:0.15rem}
 .nft-edition{color:var(--text2);font-size:0.75rem;margin-bottom:0.8rem}
+.nft-owner{font-size:0.75rem;color:var(--text2);margin-bottom:0.7rem}
+.nft-owner.mine{color:var(--green);font-weight:700}
 .nft-footer{display:flex;align-items:center;justify-content:space-between}
 .nft-price{font-weight:800}
 .nft-price small{color:var(--text2);font-weight:400;font-size:0.72rem;display:block}

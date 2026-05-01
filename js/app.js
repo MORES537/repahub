@@ -1,17 +1,4 @@
 const RC_PER_HBAR = globalThis.APP_CONFIG.rcPerHbar;
-const TRACKS = [
-  {id:1,title:"Bajo El Solar",artist:"RepaHub Original",genre:"Reparto Cubano",price:20000,cover:"assets/covers/bajo-el-solar.png",url:"assets/audio/bajo-el-solar.mp3",unlocked:false},
-  {id:2,title:"La Soga Suena",artist:"RepaHub Original",genre:"Reparto Cubano",price:20000,cover:"assets/covers/la-soga-suena.png",url:"assets/audio/la-soga-suena.mp3",unlocked:false},
-  {id:3,title:"Receipt for the Bruise",artist:"RepaHub Original",genre:"Reparto Cubano",price:20000,cover:"assets/covers/receipt-for-the-bruise.png",url:"assets/audio/receipt-for-the-bruise.mp3",unlocked:false},
-];
-const NFTS = [
-  {name:"Genesis #001",edition:"1 of 1",rarity:"legendary",price:10000,emoji:"👑",bg:"linear-gradient(135deg,#1a1000,#3a2a00)"},
-  {name:"Havana Night #042",edition:"1 of 10",rarity:"epic",price:2000,emoji:"🌃",bg:"linear-gradient(135deg,#1a0033,#330066)"},
-  {name:"Street Rhythm #108",edition:"1 of 50",rarity:"rare",price:500,emoji:"🎵",bg:"linear-gradient(135deg,#001a2e,#003a6e)"},
-  {name:"Barrio Life #203",edition:"1 of 100",rarity:"rare",price:500,emoji:"🏙️",bg:"linear-gradient(135deg,#001a2e,#003a6e)"},
-  {name:"Cuban Vibes #512",edition:"1 of 500",rarity:"common",price:100,emoji:"🇨🇺",bg:"linear-gradient(135deg,#0a1a0a,#1a2e1a)"},
-  {name:"Gold Chain #033",edition:"1 of 10",rarity:"epic",price:2000,emoji:"✨",bg:"linear-gradient(135deg,#1a1000,#2a2000)"},
-];
 
 globalThis.wallet = globalThis.wallet || null;
 var walletRcBalance = 0;
@@ -19,11 +6,13 @@ var onChainStatusTimer = null;
 var audio = null;
 var playing = false;
 var previewTimer = null;
-var tracks = [...TRACKS];
+var tracks = [];
 globalThis.audio = audio;
 globalThis.playing = playing;
 globalThis.previewTimer = previewTimer;
 globalThis.tracks = tracks;
+globalThis.tracksLoading = false;
+globalThis.tracksLoadError = null;
 
 // Load real logo
 const LOGO_URL = "assets/logo/repahub-logo.png";
@@ -46,7 +35,21 @@ function nav(id){
 }
 
 function buildFeatured(){
-  document.getElementById('featuredGrid').innerHTML = TRACKS.map(t => `
+  const featuredGrid = document.getElementById('featuredGrid');
+  if(!featuredGrid)return;
+  if(globalThis.tracksLoading){
+    featuredGrid.innerHTML = `<div class="loading-panel"><div class="spinner"></div><div>Loading tracks from blockchain...</div></div>`;
+    return;
+  }
+  if(globalThis.tracksLoadError){
+    featuredGrid.innerHTML = `<div class="loading-panel error">Failed to load tracks. Please refresh.</div>`;
+    return;
+  }
+  if(!tracks.length){
+    featuredGrid.innerHTML = `<div class="loading-panel">No tracks found on-chain.</div>`;
+    return;
+  }
+  featuredGrid.innerHTML = tracks.map(t => `
     <div class="feat-card">
       <img class="feat-cover" src="${t.cover}" alt="${t.title}" onerror="this.style.background='var(--dark4)'">
       <div class="feat-info">
@@ -54,41 +57,183 @@ function buildFeatured(){
         <div class="feat-artist">${t.artist} · ${t.genre}</div>
         <div class="feat-footer">
           <button class="preview-btn" id="prev-${t.id}" onclick="previewTrack(${t.id})">▶ 30s Preview</button>
-          <div class="feat-price">${t.price.toLocaleString()} $RC</div>
+          <div class="feat-price">${Math.round(t.price).toLocaleString()} $RC</div>
         </div>
       </div>
     </div>`).join('');
 }
 
-function buildMusic(){
-  document.getElementById('musicList').innerHTML = tracks.map((t,i) => `
-    <div class="music-item" onclick="playTrack(${t.id})">
-      <div class="music-num">${i + 1}</div>
-      <img class="music-cover" src="${t.cover}" alt="${t.title}" onerror="this.style.background='var(--dark4)'">
-      <div class="music-info"><div class="music-title">${t.title}</div><div class="music-artist">${t.artist} · ${t.genre}</div></div>
-      <div class="music-right">
-        ${t.unlocked
-          ? `<div class="unlocked-badge">✓ Unlocked</div><button class="btn-sm green" onclick="event.stopPropagation();playTrack(${t.id})">Play</button>`
-          : `<div class="music-price">${t.price.toLocaleString()} $RC</div><button class="btn-sm" onclick="event.stopPropagation();unlockTrack(${t.id})">Unlock</button>`
-        }
+function shortAddress(address){
+  if(!address || typeof address !== "string") return "Unknown";
+  if(address.length <= 12) return address;
+  return `${address.slice(0,6)}...${address.slice(-4)}`;
+}
+
+function syncStats(){
+  const totalTracksEl = document.getElementById("statTracks");
+  if(totalTracksEl){
+    totalTracksEl.textContent = String(tracks.length || 0);
+  }
+}
+
+function buildMyCollection(){
+  const section = document.getElementById("myCollectionSection");
+  const collectionGrid = document.getElementById("myCollectionGrid");
+  if(!section || !collectionGrid)return;
+
+  if(!globalThis.wallet){
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "block";
+  const mine = tracks.filter(t => t.owned);
+  if(!mine.length){
+    collectionGrid.innerHTML = `<div class="loading-panel">You don't own any tracks yet. Buy your first NFT!</div>`;
+    return;
+  }
+  collectionGrid.innerHTML = mine.map((t) => `
+    <div class="feat-card">
+      <img class="feat-cover" src="${t.cover}" alt="${t.title}" onerror="this.style.background='var(--dark4)'">
+      <div class="feat-info">
+        <div class="feat-name">${t.title}</div>
+        <div class="feat-artist">${t.artist}</div>
+        <div class="feat-footer">
+          <button class="btn-sm green" onclick="playTrack(${t.id})">▶ Play</button>
+          <a class="btn-sm" href="${t.audio}" target="_blank" rel="noopener noreferrer" download>⬇ Download</a>
+        </div>
       </div>
-    </div>`).join('');
+    </div>
+  `).join("");
 }
 
 function buildNFTs(filter = 'all'){
-  const list = filter === 'all' ? NFTS : NFTS.filter(n => n.rarity === filter);
-  document.getElementById('nftGrid').innerHTML = list.map(n => `
-    <div class="nft-card ${n.rarity}">
-      <div class="nft-img" style="background:${n.bg}">${n.emoji}<div class="rarity-badge ${n.rarity}">${n.rarity}</div><div class="coming-soon">Coming Soon</div></div>
+  const nftGrid = document.getElementById('nftGrid');
+  if(!nftGrid)return;
+  if(globalThis.tracksLoading){
+    nftGrid.innerHTML = `<div class="loading-panel"><div class="spinner"></div><div>Loading tracks from blockchain...</div></div>`;
+    return;
+  }
+  if(globalThis.tracksLoadError){
+    nftGrid.innerHTML = `<div class="loading-panel error">Failed to load tracks. Please refresh.</div>`;
+    return;
+  }
+  const list = (filter === 'all' || filter === 'legendary') ? tracks : [];
+  nftGrid.innerHTML = list.map(t => {
+    const isMine = Boolean(t.owned);
+    const ownerLabel = isMine ? "You own this ✓" : `Owner: ${shortAddress(t.owner_address || t.artist_address)}`;
+    const canBuy = !isMine;
+    return `
+    <div class="nft-card legendary">
+      <div class="nft-img nft-cover-wrap">
+        <img class="nft-cover" src="${t.cover}" alt="${t.title}" onerror="this.style.background='var(--dark4)'">
+        <div class="rarity-badge legendary">Legendary</div>
+      </div>
       <div class="nft-info">
-        <div class="nft-name">${n.name}</div>
-        <div class="nft-edition">${n.edition}</div>
+        <div class="nft-name">${t.title}</div>
+        <div class="nft-edition">${t.artist} · 1 of 1</div>
+        <div class="nft-owner ${isMine ? "mine" : ""}">${ownerLabel}</div>
         <div class="nft-footer">
-          <div class="nft-price" style="color:${n.rarity === 'legendary' ? '#ffd600' : n.rarity === 'epic' ? '#c653dd' : n.rarity === 'rare' ? '#00b4d8' : '#7eb3d4'}">${n.price.toLocaleString()} $RC<small>${(n.price / RC_PER_HBAR).toFixed(2)} HBAR</small></div>
-          <button class="btn-sm" onclick="toast('NFT mint is coming soon','')">Coming Soon</button>
+          <div class="nft-price">${Math.round(t.price).toLocaleString()} $RC<small>${(t.price / RC_PER_HBAR).toFixed(2)} HBAR</small></div>
+          ${canBuy
+            ? `<button class="btn-sm" onclick="buyTrackNft(${t.id})">Buy NFT</button>`
+            : `<button class="btn-sm" onclick="playTrack(${t.id})">Play</button>`
+          }
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function normalizeIpfsUrl(value){
+  if(!value || typeof value !== "string") return "";
+  if(value.startsWith("ipfs://")){
+    return `${APP_CONFIG.pinataGateway}/ipfs/${value.replace("ipfs://","")}`;
+  }
+  return value;
+}
+
+async function loadTracksFromChain(){
+  globalThis.tracksLoading = true;
+  globalThis.tracksLoadError = null;
+  buildFeatured();
+  if(typeof globalThis.buildMusic === "function") globalThis.buildMusic();
+  buildNFTs();
+  buildMyCollection();
+  try{
+    const chainTracks = await globalThis.musicNftGetAllTracks();
+    const mapped = await Promise.all(chainTracks.map(async (track) => {
+      const metadataCid = track.metadataCID || track.metadataCid || "";
+      let metadata = {};
+      try{
+        metadata = metadataCid ? await globalThis.fetchMetadata(metadataCid) : {};
+      }catch(err){
+        console.log("Metadata fetch failed:", err && (err.message || err));
+      }
+      const genreAttr = Array.isArray(metadata.attributes)
+        ? metadata.attributes.find((a) => a && a.trait_type === "Genre")
+        : null;
+      return {
+        id: Number(track.id),
+        title: track.title || metadata.name || `Track #${track.id}`,
+        artist: metadata.creator || "RepaHub Original",
+        genre: genreAttr?.value || "Reparto Cubano",
+        price: Number(track.priceRC || 0),
+        cover: normalizeIpfsUrl(metadata.image),
+        audio: normalizeIpfsUrl(metadata.properties?.audio),
+        audioHash: track.audioHash,
+        metadataCID: metadataCid,
+        artist_address: track.artist || track.creator,
+        owner_address: track.currentOwner || track.owner,
+        unlocked: false,
+        owned: false
+      };
+    }));
+    tracks = mapped;
+    globalThis.tracks = tracks;
+    syncStats();
+    buildFeatured();
+    if(typeof globalThis.buildMusic === "function") globalThis.buildMusic();
+    buildNFTs();
+    if(globalThis.wallet){
+      await checkOwnedTracks();
+    }else{
+      buildMyCollection();
+    }
+  }catch(e){
+    globalThis.tracksLoadError = e;
+    console.log("Failed loading tracks from chain:", e && (e.message || e));
+    buildFeatured();
+    if(typeof globalThis.buildMusic === "function") globalThis.buildMusic();
+    buildNFTs();
+  }finally{
+    globalThis.tracksLoading = false;
+    buildFeatured();
+    if(typeof globalThis.buildMusic === "function") globalThis.buildMusic();
+    buildNFTs();
+    buildMyCollection();
+  }
+}
+
+async function checkOwnedTracks(){
+  if(!globalThis.wallet || !Array.isArray(tracks) || !tracks.length){
+    buildMyCollection();
+    return;
+  }
+  for(const t of tracks){
+    try{
+      const owned = await globalThis.musicNftCheckOwnership(globalThis.wallet, t.id);
+      t.owned = Boolean(owned);
+      t.unlocked = t.owned;
+    }catch(err){
+      t.owned = false;
+      t.unlocked = false;
+      console.log("Ownership check failed:", t.id, err && (err.message || err));
+    }
+  }
+  if(typeof globalThis.buildMusic === "function") globalThis.buildMusic();
+  buildNFTs();
+  buildMyCollection();
 }
 
 function calcRC(){
@@ -213,8 +358,12 @@ function submitTrack(){
   if(!t || !p){toast('Fill in all fields','error');return;}
   closeUpload();toast('Signing upload with your wallet...','');
   setTimeout(() => {
-    tracks.unshift({id:Date.now(),title:t,artist:'You',genre:document.getElementById('trackGenre').value || 'Reparto',price:parseInt(p,10),cover:'',url:'',unlocked:true});
-    buildMusic();toast(`"${t}" is now live on RepaHub!`,'success');nav('music');
+    tracks.unshift({id:Date.now(),title:t,artist:'You',genre:document.getElementById('trackGenre').value || 'Reparto',price:parseInt(p,10),cover:'',audio:'',unlocked:true,owned:true});
+    if(typeof globalThis.buildMusic === "function") globalThis.buildMusic();
+    buildFeatured();
+    buildNFTs();
+    buildMyCollection();
+    toast(`"${t}" is now live on RepaHub!`,'success');nav('music');
   },2000);
 }
 
@@ -257,11 +406,10 @@ function classifyTxError(error){
   img.src = LOGO_URL;
 })();
 
-buildFeatured();
-buildMusic();
-buildNFTs();
+loadTracksFromChain();
 
 globalThis.nav = nav;
+globalThis.buildFeatured = buildFeatured;
 globalThis.buildNFTs = buildNFTs;
 globalThis.calcRC = calcRC;
 globalThis.calcHBAR = calcHBAR;
@@ -273,6 +421,9 @@ globalThis.submitTrack = submitTrack;
 globalThis.refreshOnChainStatus = refreshOnChainStatus;
 globalThis.toast = toast;
 globalThis.classifyTxError = classifyTxError;
+globalThis.loadTracksFromChain = loadTracksFromChain;
+globalThis.checkOwnedTracks = checkOwnedTracks;
+globalThis.buildMyCollection = buildMyCollection;
 window.nav = nav;
 window.buildNFTs = buildNFTs;
 window.calcRC = calcRC;
