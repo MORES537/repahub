@@ -4,15 +4,19 @@ import {
   ContractExecuteTransaction,
   ContractFunctionParameters,
   ContractId,
-  TokenId
+  TokenId,
+  TokenAssociateTransaction
 } from "@hashgraph/sdk";
 
 const MUSIC_NFT_ABI = [
   "function getAllTrackIds() view returns (uint256[])",
-  "function getTrack(uint256 trackId) view returns (tuple(uint256 id, address creator, address owner, bytes32 audioHash, string metadataCid, string title, uint256 priceRC, uint256 reserved0, uint256 extra))",
+  "function getTrack(uint256 trackId) view returns (tuple(uint256 id, address artist, address currentOwner, bytes32 audioHash, string metadataCID, string title, uint256 price, uint8 status, uint256 createdAt, uint256 soldAt, int64 serialNumber))",
   "function ownedTracks(address account, uint256 index) view returns (uint256)",
-  "function buyTrack(uint256 trackId)"
+  "function buyTrack(uint256 trackId)",
+  "function uploadTrack(bytes32 audioHash, string metadataCID, string title, uint256 priceInTinyRC) returns (uint256)"
 ];
+
+const UPLOAD_FEE_TINY_RC = BigInt(100) * BigInt(1e9);
 
 const DEFAULT_MUSIC_NFT_GAS = 800000;
 
@@ -75,28 +79,32 @@ function decodeTrackTuple(rawTuple) {
   const scale = 10 ** APP_CONFIG.rcTokenDecimals;
   const [
     id,
-    creator,
-    owner,
+    artist,
+    currentOwner,
     audioHash,
     metadataCid,
     title,
     priceRC,
-    reserved0,
-    extra
+    status,
+    createdAt,
+    soldAt,
+    serialNumber
   ] = rawTuple;
   const priceRCBig =
     typeof priceRC === "bigint" ? priceRC : BigInt(priceRC.toString());
   return {
     id: Number(id),
-    creator: creator.toLowerCase(),
-    owner: owner.toLowerCase(),
+    creator: artist.toLowerCase(),
+    owner: currentOwner.toLowerCase(),
     audioHash,
     metadataCid,
     title,
     priceRCRaw: priceRCBig.toString(),
     priceRC: Number(priceRCBig) / scale,
-    reserved0: reserved0.toString(),
-    extra: extra.toString()
+    status: Number(status),
+    createdAt: Number(createdAt),
+    soldAt: Number(soldAt),
+    serialNumber: serialNumber.toString()
   };
 }
 
@@ -157,6 +165,24 @@ async function resolveWalletEvmAddress(walletAddress) {
   throw new Error("walletAddress must be Hedera account id or EVM address");
 }
 
+async function isAssociatedToHtsNft(accountId) {
+  const tokenId = APP_CONFIG.htsNftTokenId;
+  const url = `${APP_CONFIG.mirrorNodeUrl}/api/v1/accounts/${accountId}/tokens?token.id=${tokenId}`;
+  const res = await fetch(url);
+  if (!res.ok) return false;
+  const data = await res.json();
+  return Array.isArray(data.tokens) && data.tokens.length > 0;
+}
+
+async function associateBuyerToHtsNft(signer, ownerAccount) {
+  const tokenId = TokenId.fromString(APP_CONFIG.htsNftTokenId);
+  const tx = await new TokenAssociateTransaction()
+    .setAccountId(ownerAccount)
+    .setTokenIds([tokenId])
+    .freezeWithSigner(signer);
+  return tx.executeWithSigner(signer);
+}
+
 /**
  * Uses `ownedTracks(address,uint256 index)` — enumerate until revert.
  * @param {string} walletAddress Hedera `0.0.x` or `0x...`
@@ -201,6 +227,17 @@ async function buyTrackNFT(trackId) {
   const tokenId = TokenId.fromString(APP_CONFIG.rcTokenId);
   const signer = window.hashconnect.getSigner(ownerAccount);
 
+  // STEP 0: Check & associate HTS NFT if needed
+  console.log("[musicNft] Step 0: checking HTS NFT association...");
+  const isAssoc = await isAssociatedToHtsNft(globalThis.wallet);
+  if (!isAssoc) {
+    console.log("[musicNft] Step 0: NOT associated, sending associate tx...");
+    await associateBuyerToHtsNft(signer, ownerAccount);
+    console.log("[musicNft] Step 0: associated successfully.");
+  } else {
+    console.log("[musicNft] Step 0: already associated, skipping.");
+  }
+
   // STEP 1: Approve RC allowance
   console.log("[musicNft] Step 1: building allowance tx...");
   const allowanceTx = await new AccountAllowanceApproveTransaction()
@@ -227,12 +264,92 @@ async function buyTrackNFT(trackId) {
   return result;
 }
 
+/**
+ * Approve 100 RC upload fee then call uploadTrack on the contract.
+ * @param {string} audioHashHex  keccak256 hex string (0x...)
+ * @param {string} metadataCID   IPFS CID
+ * @param {string} title
+ * @param {bigint|string|number} priceInTinyRC
+ */
+async function uploadTrackOnChain(audioHashHex, metadataCID, title, priceInTinyRC) {
+  assertMusicNftConfig();
+  if (!globalThis.wallet) throw new Error("Wallet not connected");
+  if (!window.hashconnect) throw new Error("HashConnect not initialized");
+
+  const ownerAccount = AccountId.fromString(globalThis.wallet);
+  const nftContractId = ContractId.fromString(APP_CONFIG.musicNftContractId);
+  const tokenId = TokenId.fromString(APP_CONFIG.rcTokenId);
+  const signer = window.hashconnect.getSigner(ownerAccount);
+
+  // Convert hex hash → Uint8Array(32) for addBytes32
+  const hex = audioHashHex.startsWith("0x") ? audioHashHex.slice(2) : audioHashHex;
+  const audioHashBytes = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    audioHashBytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+
+  const priceBig = BigInt(priceInTinyRC.toString());
+
+  // STEP 1: Approve 100 RC upload fee
+  console.log("[uploadTrack] Step 1: approving upload fee...");
+  const allowanceTx = await new AccountAllowanceApproveTransaction()
+    .approveTokenAllowance(tokenId, ownerAccount, nftContractId, UPLOAD_FEE_TINY_RC)
+    .freezeWithSigner(signer);
+  await allowanceTx.executeWithSigner(signer);
+  console.log("[uploadTrack] Step 1 DONE.");
+
+  // STEP 2: Call uploadTrack
+  console.log("[uploadTrack] Step 2: calling uploadTrack...");
+  const params = new ContractFunctionParameters()
+    .addBytes32(audioHashBytes)
+    .addString(metadataCID)
+    .addString(title)
+    .addUint256(priceBig.toString());
+
+  const executeTx = await new ContractExecuteTransaction()
+    .setContractId(nftContractId)
+    .setGas(DEFAULT_MUSIC_NFT_GAS)
+    .setFunction("uploadTrack", params)
+    .freezeWithSigner(signer);
+
+  const result = await executeTx.executeWithSigner(signer);
+  console.log("[uploadTrack] Step 2 DONE:", result);
+  return result;
+}
+
 globalThis.musicNftGetMirrorResults = fetchMirrorContractResults;
 globalThis.musicNftGetAllTrackIds = getAllTrackIds;
 globalThis.musicNftGetAllTracks = getAllTracks;
 globalThis.musicNftGetTrackById = getTrackById;
 globalThis.musicNftCheckOwnership = checkOwnership;
+/**
+ * Cancel an unsold track (artist only, track must not have been sold).
+ * @param {number|string} trackId
+ */
+async function cancelTrack(trackId) {
+  assertMusicNftConfig();
+  if (!globalThis.wallet) throw new Error("Wallet not connected");
+  if (!window.hashconnect) throw new Error("HashConnect not initialized");
+
+  const ownerAccount = AccountId.fromString(globalThis.wallet);
+  const nftContractId = ContractId.fromString(APP_CONFIG.musicNftContractId);
+  const signer = window.hashconnect.getSigner(ownerAccount);
+
+  const params = new ContractFunctionParameters().addUint256(String(trackId));
+  const tx = await new ContractExecuteTransaction()
+    .setContractId(nftContractId)
+    .setGas(300000)
+    .setFunction("cancelUnsoldTrack", params)
+    .freezeWithSigner(signer);
+
+  const result = await tx.executeWithSigner(signer);
+  console.log("[cancelTrack] DONE:", result);
+  return result;
+}
+
 globalThis.musicNftBuyTrack = buyTrackNFT;
+globalThis.musicNftUploadTrack = uploadTrackOnChain;
+globalThis.musicNftCancelTrack = cancelTrack;
 globalThis.musicNftResolveWalletEvm = resolveWalletEvmAddress;
 
 export {
@@ -242,5 +359,8 @@ export {
   getTrackById,
   checkOwnership,
   buyTrackNFT,
-  resolveWalletEvmAddress
+  uploadTrackOnChain,
+  resolveWalletEvmAddress,
+  isAssociatedToHtsNft,
+  associateBuyerToHtsNft
 };

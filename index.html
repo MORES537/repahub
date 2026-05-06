@@ -13,11 +13,10 @@
 <nav>
   <div class="logo" onclick="nav('home')">
     <img src="assets/logo/repahub-logo.png"
-         onerror="this.style.display='none'"
          id="navLogo"
-         style="display:none"
-         alt="RepaHub">
-    <img src="assets/logo/repahub-logo.png" id="logoReal" style="display:none" alt="RepaHub Logo">
+         style="display:none;width:42px;height:42px;border-radius:50%;object-fit:cover"
+         alt="RepaHub"
+         onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex'">
     <!-- Fallback circle -->
     <div id="logoFallback" style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#0d8fd8,#00e676);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.8rem;color:#000;border:2px solid var(--cyan);flex-shrink:0">RH</div>
     <div class="logo-text">RepaHub</div>
@@ -45,9 +44,9 @@
   </div>
   <div class="stats">
     <div class="stat"><div class="stat-num" id="statTracks">0</div><div class="stat-label">Original Tracks</div></div>
-    <div class="stat"><div class="stat-num">10,000</div><div class="stat-label">NFTs Collection</div></div>
-    <div class="stat"><div class="stat-num">20,000</div><div class="stat-label">$RC per Track</div></div>
-    <div class="stat"><div class="stat-num">2,000 RC</div><div class="stat-label">= 1 HBAR</div></div>
+    <div class="stat"><div class="stat-num" id="statNFTs">—</div><div class="stat-label">NFTs on Chain</div></div>
+    <div class="stat"><div class="stat-num" id="statMinPrice">—</div><div class="stat-label">$RC Starting Price</div></div>
+    <div class="stat"><div class="stat-num" id="statRcRate">—</div><div class="stat-label">RC = 1 HBAR</div></div>
   </div>
 
   <div style="margin-top:2rem">
@@ -132,7 +131,7 @@
   <div class="sec-head"><h2>Cultural Hub</h2><p>History, culture and community of Cuban Reparto music</p></div>
   <div class="hub-card"><h3>What is Reparto?</h3><p>Reparto is an urban music genre born in Cuba in the late 1990s, fusing reggaeton with Cuban timba, rap, and electronic music. It originated in the popular neighborhoods of Havana and is characterized by direct lyrics, accelerated rhythms, and an overwhelming energy that connects with everyday Cuban reality.</p><div style="margin-top:0.8rem"><span class="tag">Cuba</span><span class="tag">Cuban Reggaeton</span><span class="tag">Timba</span><span class="tag">Cuban Trap</span><span class="tag">Urban</span></div></div>
   <div class="hub-card"><h3>History of the Genre</h3><p>Emerging in the late 90s in East Havana — especially in Alamar, Regla, and Guanabacoa — Reparto developed a unique Cuban identity distinct from Puerto Rican reggaeton. It incorporates elements of rumba and street culture. Through the 2000s, artists brought it to national and international audiences.</p></div>
-  <div class="hub-card"><h3>RepaCoin ($RC) in the Ecosystem</h3><p>$RC is the native token of RepaHub. Use it to unlock music from independent artists, purchase NFTs from the 10,000-piece collection, tip your favorite creators, and participate in community governance votes.</p><div style="margin-top:1rem"><button class="btn-outline" onclick="nav('buy')">Get $RC Tokens</button></div></div>
+  <div class="hub-card"><h3>RepaCoin ($RC) in the Ecosystem</h3><p>$RC is the native token of RepaHub. Use it to unlock music from independent artists, purchase unique music NFTs, tip your favorite creators, and participate in community governance votes.</p><div style="margin-top:1rem"><button class="btn-outline" onclick="nav('buy')">Get $RC Tokens</button></div></div>
   <div class="hub-card"><h3>Community Governance</h3><p>$RC holders can propose and vote on key decisions: which artists get featured, new platform features, community events, and more. The more $RC you hold, the more weight your vote carries.</p><div style="margin-top:1rem"><a class="btn-outline" href="https://example.com/repahub-community" target="_blank" rel="noopener noreferrer">Join Community</a></div></div>
 </div>
 
@@ -143,11 +142,18 @@
     <div class="sub">Share your original music with the RepaHub community</div>
     <div class="disclaimer">⚠️ <strong>Legal Declaration:</strong> By uploading, you confirm that this is your original work and that you hold all rights to distribute it on RepaHub. You are solely responsible for the content you upload.</div>
     <div class="inp-group"><label>Track Title</label><input type="text" id="trackTitle" placeholder="My original track"></div>
+    <div class="inp-group"><label>Artist Name</label><input type="text" id="trackArtist" placeholder="Your artist name"></div>
     <div class="inp-group"><label>Price to unlock (in $RC)</label><input type="number" id="trackPrice" placeholder="e.g. 20000" min="1"></div>
     <div class="inp-group"><label>Genre</label><input type="text" id="trackGenre" placeholder="e.g. Reparto / Electronic"></div>
-    <div style="background:var(--dark4);border:1px dashed #1e3a5a;border-radius:8px;padding:1.2rem;text-align:center;margin-bottom:1rem;cursor:pointer">
+    <input type="file" id="trackAudio" accept="audio/mpeg,audio/wav,audio/flac,audio/*" style="display:none">
+    <div style="background:var(--dark4);border:1px dashed #1e3a5a;border-radius:8px;padding:1.2rem;text-align:center;margin-bottom:1rem;cursor:pointer" onclick="document.getElementById('trackAudio').click()">
       <div style="font-size:1.5rem;margin-bottom:0.3rem">📁</div>
-      <div style="font-size:0.8rem;color:var(--text2)">Click to select audio file (MP3, WAV, FLAC)</div>
+      <div id="trackAudioLabel" style="font-size:0.8rem;color:var(--text2)">Click to select audio file (MP3, WAV, FLAC)</div>
+    </div>
+    <input type="file" id="trackCover" accept="image/jpeg,image/png,image/webp,image/*" style="display:none">
+    <div style="background:var(--dark4);border:1px dashed #1e3a5a;border-radius:8px;padding:1.2rem;text-align:center;margin-bottom:1rem;cursor:pointer" onclick="document.getElementById('trackCover').click()">
+      <div style="font-size:1.5rem;margin-bottom:0.3rem">🖼️</div>
+      <div id="trackCoverLabel" style="font-size:0.8rem;color:var(--text2)">Cover image (optional — JPG, PNG, WEBP)</div>
     </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeUpload()">Cancel</button>

@@ -1,6 +1,30 @@
+# Environment — NEVER commit real secrets
 .env
+.env.local
+.env.*.local
+
+# Internal secrets module
 js/secrets.js
+
+# Debug / diagnostic scripts (dev only)
+diagnose-buy-error.js
+post-buy-state.js
+state-check.js
+
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/

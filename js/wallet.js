@@ -81,6 +81,12 @@ async function initHashConnect() {
     pairingData = newPairing;
     const accountId = newPairing.accountIds[0];
     globalThis.wallet = accountId;
+    globalThis.walletEvm = null; // resolve async below
+    if(typeof globalThis.musicNftResolveWalletEvm === "function"){
+      globalThis.musicNftResolveWalletEvm(accountId)
+        .then(evm => { globalThis.walletEvm = evm; if(typeof globalThis.buildMusic === "function") globalThis.buildMusic(); })
+        .catch(() => {});
+    }
     document.getElementById("walletBtn").textContent = accountId + " | HashPack";
     document.getElementById("walletBtn").classList.add("connected");
     updateWalletMenu(accountId);
@@ -95,6 +101,7 @@ async function initHashConnect() {
   hashconnect.disconnectionEvent.on(() => {
     pairingData = null;
     globalThis.wallet = null;
+    globalThis.walletEvm = null;
     document.getElementById("walletBtn").textContent = "Connect Wallet";
     document.getElementById("walletBtn").classList.remove("connected");
     updateWalletMenu(null);
@@ -118,6 +125,7 @@ async function disconnectWallet(){
   }
   pairingData = null;
   globalThis.wallet = null;
+  globalThis.walletEvm = null;
   document.getElementById("walletBtn").textContent = "Connect Wallet";
   document.getElementById("walletBtn").classList.remove("connected");
   updateWalletMenu(null);

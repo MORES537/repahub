@@ -69,11 +69,40 @@ function shortAddress(address){
   return `${address.slice(0,6)}...${address.slice(-4)}`;
 }
 
+/**
+ * Format creator/artist field: if it looks like a wallet address, shorten it;
+ * otherwise return as-is.
+ */
+function formatArtistName(creator){
+  if(!creator || typeof creator !== "string") return "RepaHub Artist";
+  // Hedera account ID: 0.0.XXXXX
+  if(/^0\.0\.\d+$/.test(creator.trim())) return shortAddress(creator.trim());
+  // EVM address: 0x...
+  if(/^0x[a-fA-F0-9]{40}$/.test(creator.trim())) return shortAddress(creator.trim());
+  return creator;
+}
+globalThis.formatArtistName = formatArtistName;
+
 function syncStats(){
+  const count = tracks.length || 0;
   const totalTracksEl = document.getElementById("statTracks");
-  if(totalTracksEl){
-    totalTracksEl.textContent = String(tracks.length || 0);
+  if(totalTracksEl) totalTracksEl.textContent = String(count);
+
+  const nftsEl = document.getElementById("statNFTs");
+  if(nftsEl) nftsEl.textContent = count > 0 ? count.toLocaleString() : "—";
+
+  const minPriceEl = document.getElementById("statMinPrice");
+  if(minPriceEl){
+    if(count > 0){
+      const min = Math.min(...tracks.map(t => Number(t.price) || 0).filter(p => p > 0));
+      minPriceEl.textContent = isFinite(min) ? Math.round(min).toLocaleString() : "—";
+    } else {
+      minPriceEl.textContent = "—";
+    }
   }
+
+  const rcRateEl = document.getElementById("statRcRate");
+  if(rcRateEl) rcRateEl.textContent = (APP_CONFIG.rcPerHbar || 2000).toLocaleString();
 }
 
 function buildMyCollection(){
@@ -148,10 +177,27 @@ function buildNFTs(filter = 'all'){
 function normalizeIpfsUrl(value){
   if(!value || typeof value !== "string") return "";
   if(value.startsWith("ipfs://")){
-    return `${APP_CONFIG.pinataGateway}/ipfs/${value.replace("ipfs://","")}`;
+    const cid = value.replace("ipfs://","");
+    return `${APP_CONFIG.pinataGateway}/ipfs/${cid}`;
   }
   return value;
 }
+
+// Resolve an ipfs:// or gateway URL to a signed URL when possible
+async function resolveMediaUrl(value){
+  if(!value || typeof value !== "string") return "";
+  let cid = null;
+  if(value.startsWith("ipfs://")) cid = value.replace("ipfs://","");
+  else if(value.includes("/ipfs/")) cid = value.split("/ipfs/")[1]?.split("?")[0];
+  if(cid && typeof globalThis.pinataSignedUrl === "function"){
+    try{
+      const signed = await globalThis.pinataSignedUrl(cid);
+      if(signed) return signed;
+    }catch(_){}
+  }
+  return normalizeIpfsUrl(value);
+}
+globalThis.resolveMediaUrl = resolveMediaUrl;
 
 async function loadTracksFromChain(){
   globalThis.tracksLoading = true;
@@ -162,7 +208,7 @@ async function loadTracksFromChain(){
   buildMyCollection();
   try{
     const chainTracks = await globalThis.musicNftGetAllTracks();
-    const mapped = await Promise.all(chainTracks.map(async (track) => {
+    const mapped = (await Promise.all(chainTracks.map(async (track) => {
       const metadataCid = track.metadataCID || track.metadataCid || "";
       let metadata = {};
       try{
@@ -173,22 +219,28 @@ async function loadTracksFromChain(){
       const genreAttr = Array.isArray(metadata.attributes)
         ? metadata.attributes.find((a) => a && a.trait_type === "Genre")
         : null;
+      // status: 0=Listed, 1=Sold, 2=Removed, 3=Cancelled — hide removed/cancelled
+      if (track.status === 2 || track.status === 3) return null;
+
+      const coverUrl = await resolveMediaUrl(metadata.image || "");
+      const audioUrl = await resolveMediaUrl(metadata.properties?.audio || "");
       return {
         id: Number(track.id),
         title: track.title || metadata.name || `Track #${track.id}`,
-        artist: metadata.creator || "RepaHub Original",
+        artist: formatArtistName(metadata.creator) || "RepaHub Original",
         genre: genreAttr?.value || "Reparto Cubano",
         price: Number(track.priceRC || 0),
-        cover: normalizeIpfsUrl(metadata.image),
-        audio: normalizeIpfsUrl(metadata.properties?.audio),
+        cover: coverUrl,
+        audio: audioUrl,
         audioHash: track.audioHash,
         metadataCID: metadataCid,
         artist_address: track.artist || track.creator,
         owner_address: track.currentOwner || track.owner,
+        status: track.status,
         unlocked: false,
         owned: false
       };
-    }));
+    }))).filter(Boolean);
     tracks = mapped;
     globalThis.tracks = tracks;
     syncStats();
@@ -352,18 +404,15 @@ async function buyNFT(name, price) {
 }
 
 async function buyTrackNft(trackId) {
-  console.log("[BuyNFT] Starting purchase for trackId:", trackId);
-  console.log("[BuyNFT] Wallet:", globalThis.wallet);
-  console.log("[BuyNFT] hashconnect:", window.hashconnect);
   if (!globalThis.wallet) {
     toast("Connect your wallet first", "error");
     return;
   }
   try {
-    toast("Step 1/2: Approving RC allowance...", "info");
+    toast("Step 1/3: Associating NFT collection (if needed)...", "info");
+    // The 3-step flow happens inside musicNftBuyTrack
     await musicNftBuyTrack(trackId);
     toast("NFT purchased successfully! 🎉", "success");
-    // Refresh track list to update ownership
     await loadTracksFromChain();
   } catch (e) {
     console.error("buyTrackNft error:", e);
@@ -376,21 +425,87 @@ async function buyTrackNft(trackId) {
   }
 }
 
-function openUpload(){if(!globalThis.wallet){toast('Connect your wallet to upload music','error');return;}document.getElementById('uploadModal').classList.add('open');}
-function closeUpload(){document.getElementById('uploadModal').classList.remove('open');}
-function submitTrack(){
-  const t = document.getElementById('trackTitle').value,p = document.getElementById('trackPrice').value;
-  if(!t || !p){toast('Fill in all fields','error');return;}
-  closeUpload();toast('Signing upload with your wallet...','');
-  setTimeout(() => {
-    tracks.unshift({id:Date.now(),title:t,artist:'You',genre:document.getElementById('trackGenre').value || 'Reparto',price:parseInt(p,10),cover:'',audio:'',unlocked:true,owned:true});
-    if(typeof globalThis.buildMusic === "function") globalThis.buildMusic();
-    buildFeatured();
-    buildNFTs();
-    buildMyCollection();
-    toast(`"${t}" is now live on RepaHub!`,'success');nav('music');
-  },2000);
+function openUpload(){
+  if(!globalThis.wallet){toast('Connect your wallet to upload music','error');return;}
+  document.getElementById('uploadModal').classList.add('open');
 }
+function closeUpload(){
+  document.getElementById('uploadModal').classList.remove('open');
+}
+
+async function submitTrack(){
+  const title = document.getElementById('trackTitle').value.trim();
+  const artistName = (document.getElementById('trackArtist')?.value || '').trim();
+  const priceStr = document.getElementById('trackPrice').value;
+  const genre = (document.getElementById('trackGenre').value || 'Reparto Cubano').trim();
+  const audioInput = document.getElementById('trackAudio');
+  const audioFile = audioInput && audioInput.files && audioInput.files[0];
+  const coverInput = document.getElementById('trackCover');
+  const coverFile = coverInput && coverInput.files && coverInput.files[0] || null;
+
+  if(!title){toast('Enter a track title','error');return;}
+  if(!artistName){toast('Enter your artist name','error');return;}
+  if(!priceStr || parseFloat(priceStr) <= 0){toast('Enter a valid price in $RC','error');return;}
+  if(!audioFile){toast('Select an audio file','error');return;}
+
+  const priceRC = parseFloat(priceStr);
+  const submitBtn = document.querySelector('#uploadModal .btn-primary');
+  if(submitBtn) submitBtn.disabled = true;
+
+  try{
+    await globalThis.performUpload(title, genre, priceRC, audioFile, coverFile, artistName);
+    closeUpload();
+    toast(`"${title}" is now live on RepaHub!`, 'success');
+    // Reset form
+    document.getElementById('trackTitle').value = '';
+    const artistInput = document.getElementById('trackArtist');
+    if(artistInput) artistInput.value = '';
+    document.getElementById('trackPrice').value = '';
+    document.getElementById('trackGenre').value = '';
+    if(audioInput) audioInput.value = '';
+    if(coverInput) coverInput.value = '';
+    document.getElementById('trackAudioLabel').textContent = 'Click to select audio file (MP3, WAV, FLAC)';
+    document.getElementById('trackCoverLabel').textContent = 'Cover image (optional — JPG, PNG, WEBP)';
+    await loadTracksFromChain();
+    nav('music');
+  }catch(e){
+    console.error("submitTrack error:", e);
+    const msg = (e && e.message) || "Unknown error";
+    if(msg.includes('reject') || msg.includes('cancel')){
+      toast('Transaction cancelled', 'error');
+    } else {
+      toast(`Upload failed: ${msg}`, 'error');
+    }
+  }finally{
+    if(submitBtn) submitBtn.disabled = false;
+  }
+}
+
+// Update file label when user picks a file
+(function wireAudioInput(){
+  function attach(){
+    const audioInput = document.getElementById('trackAudio');
+    if(!audioInput) return;
+    audioInput.addEventListener('change', () => {
+      const f = audioInput.files && audioInput.files[0];
+      const label = document.getElementById('trackAudioLabel');
+      if(label) label.textContent = f ? `${f.name} (${(f.size / 1024 / 1024).toFixed(1)} MB)` : 'Click to select audio file (MP3, WAV, FLAC)';
+    });
+    const coverInput = document.getElementById('trackCover');
+    if(coverInput){
+      coverInput.addEventListener('change', () => {
+        const f = coverInput.files && coverInput.files[0];
+        const label = document.getElementById('trackCoverLabel');
+        if(label) label.textContent = f ? `${f.name} (${(f.size / 1024).toFixed(0)} KB)` : 'Cover image (optional — JPG, PNG, WEBP)';
+      });
+    }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', attach);
+  } else {
+    attach();
+  }
+})();
 
 function toast(msg,type){
   const el = document.getElementById('toast');
@@ -420,17 +535,22 @@ function classifyTxError(error){
 
 // LOGO — load real RepaHub logo
 (function loadLogo(){
-  const img = new Image();
-  img.onload = () => {
-    document.getElementById('logoFallback').style.display = 'none';
-    const el = document.getElementById('navLogo');
-    el.src = img.src;
+  const el = document.getElementById('navLogo');
+  if(!el) return;
+  el.onload = () => {
     el.style.display = 'block';
+    const fb = document.getElementById('logoFallback');
+    if(fb) fb.style.display = 'none';
   };
-  img.onerror = () => {document.getElementById('logoFallback').style.display = 'flex';};
-  img.src = LOGO_URL;
+  el.onerror = () => {
+    el.style.display = 'none';
+    const fb = document.getElementById('logoFallback');
+    if(fb) fb.style.display = 'flex';
+  };
+  el.src = LOGO_URL;
 })();
 
+syncStats(); // show RC rate immediately before chain data loads
 loadTracksFromChain();
 
 globalThis.nav = nav;

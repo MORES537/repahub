@@ -7,6 +7,7 @@
   "dependencies": {
     "@hashgraph/sdk": "^2.81.0",
     "buffer": "^6.0.3",
+    "ethers": "^6.16.0",
     "hashconnect": "^3.0.14"
   },
   "devDependencies": {

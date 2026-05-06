@@ -16,7 +16,10 @@ const APP_CONFIG = {
   reownProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
   musicNftContractEvm: import.meta.env.VITE_MUSIC_NFT_CONTRACT_EVM,
   musicNftContractId: import.meta.env.VITE_MUSIC_NFT_CONTRACT_ID,
-  pinataGateway: import.meta.env.VITE_PINATA_GATEWAY
+  pinataGateway: import.meta.env.VITE_PINATA_GATEWAY,
+  pinataJwt: import.meta.env.VITE_PINATA_JWT,
+  htsNftTokenId: import.meta.env.VITE_HTS_NFT_TOKEN_ID,
+  htsNftTokenEvm: import.meta.env.VITE_HTS_NFT_TOKEN_EVM
 };
 
 export { APP_CONFIG };

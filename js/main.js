@@ -5,6 +5,7 @@ window.global = window
 import './config.js'
 import './nftMetadata.js'
 import './musicNft.js'
+import './upload.js'
 import './hedera.js'
 import './app.js'
 import './wallet.js'

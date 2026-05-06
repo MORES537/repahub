@@ -87,6 +87,7 @@ nav{background:rgba(6,13,24,0.97);border-bottom:1px solid #0d3b6e;padding:0 1.5r
 .btn-sm{background:linear-gradient(135deg,#00b4d8,#0d3b6e);color:#fff;border:none;padding:0.3rem 0.75rem;border-radius:15px;font-weight:700;font-size:0.75rem;cursor:pointer;transition:opacity 0.2s;white-space:nowrap}
 .btn-sm:hover{opacity:0.8}
 .btn-sm.green{background:linear-gradient(135deg,#00bfa5,#00e676);color:#000}
+.btn-sm.danger{background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff}
 
 .upload-box{background:var(--dark3);border:2px dashed #0d3b6e;border-radius:var(--r);padding:2rem;text-align:center;margin-bottom:1.5rem;transition:border-color 0.2s;cursor:pointer}
 .upload-box:hover{border-color:var(--cyan)}

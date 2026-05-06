@@ -79,6 +79,27 @@ async function buyTrackNft(id){
   }
 }
 
+async function cancelMyTrack(id){
+  if(!globalThis.wallet){toast('Connect your wallet first','error');return;}
+  const t = (globalThis.tracks || []).find(x => x.id === id);
+  if(!t){toast('Track not found','error');return;}
+  if(!confirm(`Remove "${t.title}" from RepaHub? This cannot be undone.`)){return;}
+  try{
+    toast("Removing track from blockchain...", "");
+    await globalThis.musicNftCancelTrack(id);
+    toast(`"${t.title}" removed successfully.`, "success");
+    await globalThis.loadTracksFromChain();
+  }catch(e){
+    console.log("Cancel track error:", e);
+    const msg = (e && e.message) || "Unknown error";
+    if(msg.includes('reject') || msg.includes('cancel')){
+      toast("Transaction cancelled", "error");
+    } else {
+      toast(`Remove failed: ${msg}`, "error");
+    }
+  }
+}
+
 function buildMusic(){
   const list = globalThis.tracks || [];
   const el = document.getElementById('musicList');
@@ -91,7 +112,11 @@ function buildMusic(){
     el.innerHTML = `<div class="loading-panel error">Failed to load tracks. Please refresh.</div>`;
     return;
   }
-  el.innerHTML = list.map((t,i) => `
+  const walletEvm = (globalThis.walletEvm || '').toLowerCase();
+  el.innerHTML = list.map((t,i) => {
+    const isMyTrack = walletEvm && t.artist_address && t.artist_address.toLowerCase() === walletEvm;
+    const canRemove = isMyTrack && t.status === 0;
+    return `
     <div class="music-item">
       <div class="music-num">${i + 1}</div>
       <img class="music-cover" src="${t.cover}" alt="${t.title}" onerror="this.style.background='var(--dark4)'">
@@ -105,8 +130,10 @@ function buildMusic(){
           ? `<div class="music-own-actions"><div class="unlocked-badge">✓ Owned</div><button class="btn-sm green" onclick="playTrack(${t.id})">▶ Play</button><a class="btn-sm" href="${t.audio}" target="_blank" rel="noopener noreferrer" download>⬇ Download</a></div>`
           : `<div class="music-buy-actions"><div class="music-price">${Math.round(t.price).toLocaleString()} $RC</div><button class="btn-sm" onclick="buyTrackNft(${t.id})">Buy NFT</button></div>`
         }
+        ${canRemove ? `<button class="btn-sm danger" onclick="cancelMyTrack(${t.id})" title="Remove your unsold track">🗑 Remove</button>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function togglePlay(){
@@ -125,6 +152,7 @@ function closePlayer(){
 window.previewTrack = previewTrack;
 window.playTrack = playTrack;
 window.buyTrackNft = buyTrackNft;
+window.cancelMyTrack = cancelMyTrack;
 window.togglePlay = togglePlay;
 window.closePlayer = closePlayer;
 window.buildMusic = buildMusic;
