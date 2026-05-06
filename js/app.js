@@ -14,10 +14,6 @@ globalThis.tracks = tracks;
 globalThis.tracksLoading = false;
 globalThis.tracksLoadError = null;
 
-// Load real logo
-const LOGO_URL = "assets/logo/repahub-logo.png";
-// We'll use a data URI approach for the logo — use the RepaHub logo from the user
-const RH_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/320px-Camponotus_flavomarginatus_ant.jpg";
 
 function nav(id){
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -533,22 +529,7 @@ function classifyTxError(error){
   return "failure";
 }
 
-// LOGO — load real RepaHub logo
-(function loadLogo(){
-  const el = document.getElementById('navLogo');
-  if(!el) return;
-  el.onload = () => {
-    el.style.display = 'block';
-    const fb = document.getElementById('logoFallback');
-    if(fb) fb.style.display = 'none';
-  };
-  el.onerror = () => {
-    el.style.display = 'none';
-    const fb = document.getElementById('logoFallback');
-    if(fb) fb.style.display = 'flex';
-  };
-  el.src = LOGO_URL;
-})();
+// Logo is handled directly in HTML via <img onerror> — no JS needed.
 
 syncStats(); // show RC rate immediately before chain data loads
 loadTracksFromChain();

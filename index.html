@@ -14,11 +14,11 @@
   <div class="logo" onclick="nav('home')">
     <img src="assets/logo/repahub-logo.png"
          id="navLogo"
-         style="display:none;width:42px;height:42px;border-radius:50%;object-fit:cover"
+         style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0"
          alt="RepaHub"
          onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex'">
-    <!-- Fallback circle -->
-    <div id="logoFallback" style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#0d8fd8,#00e676);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.8rem;color:#000;border:2px solid var(--cyan);flex-shrink:0">RH</div>
+    <!-- Fallback circle (hidden by default, shown only if image fails) -->
+    <div id="logoFallback" style="display:none;width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#0d8fd8,#00e676);align-items:center;justify-content:center;font-weight:900;font-size:0.8rem;color:#000;border:2px solid var(--cyan);flex-shrink:0">RH</div>
     <div class="logo-text">RepaHub</div>
   </div>
   <div class="nav-links">
