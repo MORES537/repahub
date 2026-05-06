@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo/repahub-logo.png" alt="RepaHub Logo" width="180">
+</p>
+
 # RepaHub dApp
 
 RepaHub is a static multi-page dApp frontend for Cuban Reparto music, NFT showcase, and RepaCoin ($RC) purchase flow on Hedera Mainnet.
@@ -36,16 +40,9 @@ RepaHub is a static multi-page dApp frontend for Cuban Reparto music, NFT showca
 - Fixed UI conversion: `2000 RC = 1 HBAR`
 - Mirror Node base: `https://mainnet-public.mirrornode.hedera.com/api/v1`
 
-## Deploy to GitHub Pages
+## Deploy to Vercel
 
-Because this is a static site, deploy directly from the repository root:
-
-1. Commit and push all files to GitHub.
-2. In GitHub repo settings, open **Pages**.
-3. Set source to:
-   - Branch: `main` (or your default branch)
-   - Folder: `/ (root)`
-4. Save and wait for Pages to publish.
-5. Open the provided Pages URL.
-
-If you deploy under a subpath, keep all asset/script links relative (already configured this way).
+1. Import this repo at [vercel.com/new](https://vercel.com/new).
+2. Set **Framework Preset** to `Vite`.
+3. Add all environment variables from `.env.example` in the Vercel dashboard.
+4. Click **Deploy** — Vercel builds and publishes automatically on every push to `main`.
