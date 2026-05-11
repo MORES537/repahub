@@ -89,12 +89,9 @@ nav{background:rgba(6,13,24,0.97);border-bottom:1px solid #0d3b6e;padding:0 1.5r
 .btn-sm.green{background:linear-gradient(135deg,#00bfa5,#00e676);color:#000}
 .btn-sm.danger{background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff}
 
-/* Share button & dropdown */
-.share-wrap{position:relative;display:inline-block}
-.share-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:var(--dark3);border:1px solid rgba(0,180,216,0.25);border-radius:10px;padding:0.4rem;display:none;flex-direction:column;gap:2px;min-width:170px;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
-.share-dropdown.open{display:flex}
-.share-option{display:flex;align-items:center;gap:0.5rem;padding:0.45rem 0.75rem;border-radius:7px;font-size:0.78rem;font-weight:600;color:var(--text);cursor:pointer;border:none;background:transparent;width:100%;text-align:left;transition:background 0.15s}
-.share-option:hover{background:rgba(0,180,216,0.12);color:var(--cyan)}
+/* Share modal option buttons */
+.share-option-btn{display:flex;align-items:center;gap:0.6rem;padding:0.7rem 1rem;border-radius:10px;font-size:0.85rem;font-weight:600;color:var(--text);cursor:pointer;border:1px solid rgba(255,255,255,0.08);background:var(--dark4);width:100%;text-align:left;transition:background 0.15s,border-color 0.15s}
+.share-option-btn:hover{background:rgba(0,180,216,0.12);border-color:var(--cyan);color:var(--cyan)}
 
 .upload-box{background:var(--dark3);border:2px dashed #0d3b6e;border-radius:var(--r);padding:2rem;text-align:center;margin-bottom:1.5rem;transition:border-color 0.2s;cursor:pointer}
 .upload-box:hover{border-color:var(--cyan)}
