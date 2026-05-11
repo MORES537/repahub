@@ -17,9 +17,13 @@ function toggleShareMenu(id, e) {
   if (!isOpen) menu.classList.add("open");
 }
 
-document.addEventListener("click", () => {
-  document.querySelectorAll(".share-dropdown.open").forEach(m => m.classList.remove("open"));
-});
+// Close any open share menu when clicking elsewhere
+const _closeMenus = () => document.querySelectorAll(".share-dropdown.open").forEach(m => m.classList.remove("open"));
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => document.addEventListener("click", _closeMenus));
+} else {
+  document.addEventListener("click", _closeMenus);
+}
 
 function shareTrack(id, platform, e) {
   e.stopPropagation();
