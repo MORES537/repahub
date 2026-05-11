@@ -55,6 +55,7 @@ function buildFeatured(){
           <button class="preview-btn" id="prev-${t.id}" onclick="previewTrack(${t.id})">▶ 30s Preview</button>
           <div class="feat-price">${Math.round(t.price).toLocaleString()} $RC</div>
         </div>
+        <div style="margin-top:0.4rem">${typeof globalThis.shareButtonHtml === 'function' ? globalThis.shareButtonHtml(t.id) : ''}</div>
       </div>
     </div>`).join('');
 }
@@ -164,6 +165,7 @@ function buildNFTs(filter = 'all'){
             ? `<button class="btn-sm" onclick="buyTrackNft(${t.id})">Buy NFT</button>`
             : `<button class="btn-sm" onclick="playTrack(${t.id})">Play</button>`
           }
+          ${typeof globalThis.shareButtonHtml === 'function' ? globalThis.shareButtonHtml(t.id) : ''}
         </div>
       </div>
     </div>`;

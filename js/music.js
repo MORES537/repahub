@@ -131,6 +131,7 @@ function buildMusic(){
           : `<div class="music-buy-actions"><div class="music-price">${Math.round(t.price).toLocaleString()} $RC</div><button class="btn-sm" onclick="buyTrackNft(${t.id})">Buy NFT</button></div>`
         }
         ${canRemove ? `<button class="btn-sm danger" onclick="cancelMyTrack(${t.id})" title="Remove your unsold track">🗑 Remove</button>` : ''}
+        ${typeof globalThis.shareButtonHtml === 'function' ? globalThis.shareButtonHtml(t.id) : ''}
       </div>
     </div>`;
   }).join('');
